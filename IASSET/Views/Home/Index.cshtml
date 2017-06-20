@@ -1,0 +1,207 @@
+﻿@{
+    ViewBag.Title = "Home Page";
+}
+
+<div class="jumbotron">
+    <h1>IASSET Test using AngualrJS</h1>
+    <p class="lead"></p>
+    <p></p>
+</div>
+
+<div class="row" ng-app="app" ng-controller="MainCtrl as vm" ng-cloak>
+    @Html.AntiForgeryToken()
+    <div class="col-md-4">
+        <h2>  IASSET Test by: {{vm.myName}}</h2>
+        <p>
+            <label>Enter country name:</label>
+            <input class="form-control" ng-model="vm.countryName" type="text" />
+            <button class="btn btn-primary" type="button"  ng-click="vm.fecthCities()">Load Cities</button> 
+            <div ng-show="vm.cityExist">
+            <select class="form-control" ng-model="vm.selectedCity" ng-show="vm.cityExist">
+                <option ng-repeat="item in vm.cities" value="{{item.city}}">{{item.city}}</option>
+            </select>
+            <button class="btn btn-primary" ng-click="vm.showWeather()">Show Weather</button> 
+            </div>
+            <div ng-show="vm.weatherFound">
+              <li>  Time: {{ vm.weather.Time }} </li>
+              <li>  Wind: {{ vm.weather.Wind }} </li>
+              <li>  Visibility: {{ vm.weather.Visibility }} </li>
+              <li>  Sky Conditions: {{ vm.weather.SkyConditions }} </li>
+              <li>  Temperatur: {{ vm.weather.Temperatur }} </li>
+              <li>  Dew Point: {{ vm.weather.DewPoint }} </li>
+              <li>  Relative Humidity: {{ vm.weather.RelativeHumidity }} </li>
+              <li>  Pressure: {{ vm.weather.Pressure }} </li>
+              
+            </div>
+            <div ng-show="vm.hasError">
+                {{vm.errorMessage}}
+            </div>
+           
+        </p>
+        <p></p>
+    </div>
+    <div class="col-md-4">
+      
+        <p></p>
+    </div>
+    <div class="col-md-4">
+     
+        <p></p>
+    </div>
+</div>
+
+
+@section DOMReady {
+
+<script type="text/javascript">
+    (function () {
+        'use strict';
+        var myApp = angular.module('app', []);
+        myApp.controller('MainCtrl', MainCtrl);
+        MainCtrl.$inject = ['$scope', '$http', '$log', 'mainService'];
+
+        function MainCtrl($scope, $http, $log, mainService) {
+
+            var self = this;
+            // Params
+            self.myName = 'Amir Madadi';
+            self.size = 30;
+            self.cities = [];
+            self.countryName = '';
+            self.selectedCity = '';
+            self.errorMessage = '';
+            self.hasError = false;
+            self.cityExist = false;
+            self.weatherFound = false;
+            self.weather = { Time: '', Wind: '', Visibility: '', SkyConditions: '', Temperatur: '', DewPoint: '', RelativeHumidity: '', Pressure: '' };
+            //  Functions
+            self.fecthCities = fecthCities;
+            self.showWeather = showWeather;
+            self.showWeather2 = showWeather2;
+
+            init();
+
+            function init() {
+
+                $log.info("init loaded.");
+
+            }
+            function fecthCities() {
+                $log.info("entered country: ", self.countryName);
+                mainService
+                    .getCities(self.countryName)
+                      .then(function (result) {
+                          $log.info("return users2=", result);
+                          self.cityExist = true;
+                          self.cities = result;
+
+                          $log.info("cities=", result);
+                      });
+
+            }
+            function showWeather() {
+                self.hasError = 0;
+                $log.info("clicked ");
+
+                $log.info("entered country - city: ", self.countryName + " " + self.selectedCity);
+                mainService
+                    .showWeather(self.countryName, self.selectedCity)
+                      .then(function (result) {
+
+                          if (result.length > 0) {
+                              self.weatherFound = true;
+                              self.hasError = false;
+                              self.errorMessage = "";
+                              self.weather = result;
+                          } else {
+                              self.weatherFound = false;
+                              self.hasError = true;
+                              self.errorMessage = "Can not find the weather details from GlobalWeather web service. trying the other service ...";
+                              showWeather2();
+                          }
+
+
+                          $log.info("weather= ", result);
+                          $log.info("Weather lenght= ", result.length);
+                          $log.info("Weather found= ", self.weatherFound);
+
+                      });
+            } // of showWeather 
+
+            function showWeather2() {
+                mainService
+                     .showWeather2(self.countryName, self.selectedCity)
+                     .then(function (result) {
+
+                         if (result.length > 0) {
+                             self.weatherFound = true;
+                             self.hasError = false;
+                             self.errorMessage = "";
+                             self.weather = result;
+                         } else {
+                             self.weatherFound = false;
+                             self.hasError = true;
+                             self.errorMessage =
+                                 "Can not find the weather details from other web service!";
+                         }
+                     }
+                     );
+            }
+
+        } // of MainCtrrl
+    }
+    )();
+
+    ///////////////////////////////   Services
+    (function () {
+        'use strict';
+
+        angular.module('app').factory("mainService", mainService);
+
+        mainService.$inject = ['$http', '$log'];
+
+        function mainService($http, $log) {
+            var svc = {
+                getCities: getCities,
+                showWeather: showWeather,
+                showWeather2: showWeather2
+
+            }
+            return svc;
+
+            function getCities(cn) {
+                $log.info("in service: " + cn);
+                return $http({
+                    method: 'post',
+                    url: '/Home/GetCities',
+                    data: { countryName: cn }
+                }).then(function (response) {
+                    return response.data;
+                });
+
+            }
+            function showWeather(cn, sc) {
+                $log.info("in service: " + cn + sc);
+                return $http({
+                    method: 'post',
+                    url: '/Home/GetWeather',
+                    data: { countryName: cn, cityName: sc }
+                }).then(function (response) {
+                    return response.data;
+                });
+            }
+            function showWeather2(cn, sc) {
+                $log.info("in service showWeather2: " + cn + sc);
+                return $http({
+                    method: 'get',
+                    url: 'http://api.openweathermap.org/data/2.5/weather?q=' + sc
+                }).then(function (response) {
+                    return response.data;
+                });
+            }
+        }
+    }
+    )();
+
+</script>
+        }
